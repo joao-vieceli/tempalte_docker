@@ -1,0 +1,63 @@
+services:
+  postgres:
+    # psql -hlocalhost -p5000 -Upostgres -dpostgres
+    container_name: postgres
+    restart: always
+    build: 
+      context: ./postgres
+      dockerfile: Dockerfile
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5000:5432"
+    expose:
+      - 5432
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - task2
+
+  application:
+      container_name: application
+      restart: always
+      build:
+        context: ./application
+        dockerfile: Dockerfile.dev
+      depends_on:
+        - postgres
+      environment:
+        DB_CONNECTION: ${DB_CONNECTION_LARAVEL}
+        DB_HOST: ${DB_HOST}
+        DB_PORT: ${DB_PORT}
+        DB_DATABASE: ${DB_DATABASE}
+        DB_USERNAME: ${DB_USERNAME}
+        DB_PASSWORD: ${DB_PASSWORD}
+        TRUST_KEY: ${TRUST_KEY}
+      volumes:
+        - ./application:/var/www/html
+      networks:
+        - task2
+      expose:
+        - 80
+
+  nginx:
+    container_name: nginx
+    restart: always
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    depends_on:
+      - application
+    ports:
+      - "8081:80"
+    volumes:
+      - ./nginx/logs:/etc/nginx/logs
+    networks:
+      - task2
+
+networks:
+  task2:
+    driver: bridge
